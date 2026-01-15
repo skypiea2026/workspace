@@ -9,6 +9,7 @@ interface VoiceMessageWarningScreenProps {
   onContinue: () => void;
   onBack: () => void;
   language: Language;
+  isExiting?: boolean;
 }
 
 const translations = {
@@ -40,7 +41,7 @@ const translations = {
  * Displays recording disclosure while automatically capturing visitor photo in background.
  * Photo capture is non-blocking and requires no user interaction.
  */
-export default function VoiceMessageWarningScreen({ unit, onContinue, onBack, language }: VoiceMessageWarningScreenProps) {
+export default function VoiceMessageWarningScreen({ unit, onContinue, onBack, language, isExiting }: VoiceMessageWarningScreenProps) {
   const t = translations[language];
 
   useEffect(() => {
@@ -50,7 +51,7 @@ export default function VoiceMessageWarningScreen({ unit, onContinue, onBack, la
   }, []);
 
   return (
-    <div className="w-full h-full flex flex-col bg-white relative">
+    <div className={`w-full h-full flex flex-col bg-white relative ${isExiting ? 'screen-exit' : ''}`}>
       {/* Selected Unit Header */}
       <SelectedUnitHeader unit={unit} language={language} />
       

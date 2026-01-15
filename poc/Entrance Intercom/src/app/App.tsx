@@ -47,6 +47,12 @@ export type FlowType = 'delivery' | 'intercom' | 'voice-message';
 
 export type ConnectionStatus = 'not-configured' | 'offline' | 'online';
 
+// Idle → Home transition style options
+export type IdleToHomeTransitionStyle = 'A' | 'B' | 'C';
+
+// Default transition style: Option A (crossfade + subtle settle scale)
+const DEFAULT_TRANSITION_STYLE: IdleToHomeTransitionStyle = 'A';
+
 function App() {
   // Load language from localStorage or default to 'en'
   const [currentScreen, setCurrentScreen] = useState<Screen>('idle');
@@ -65,6 +71,12 @@ function App() {
   const [communityName, setCommunityName] = useState<string | null>(null);
   const [connectionStatus, setConnectionStatus] = useState<ConnectionStatus>('not-configured');
   
+  // Transition animation state for screen navigation
+  const [isTransitioning, setIsTransitioning] = useState(false);
+  const [transitionPhase, setTransitionPhase] = useState<'idle' | 'exiting' | 'entering'>('idle');
+  const [transitionStyle] = useState<IdleToHomeTransitionStyle>(DEFAULT_TRANSITION_STYLE);
+  const [exitingScreen, setExitingScreen] = useState<Screen | null>(null);
+  
   // Multi-tap detection for hidden setup mode entry
   const tapCountRef = useRef(0);
   const tapTimerRef = useRef<NodeJS.Timeout | null>(null);
@@ -75,7 +87,56 @@ function App() {
   }, [language]);
 
   const handleScreenChange = (screen: Screen) => {
-    setCurrentScreen(screen);
+    const isNavigatingToHome = screen === 'main-menu';
+    const isNavigatingToIdle = screen === 'idle';
+    const isNavigatingFromIdle = currentScreen === 'idle';
+    const shouldAnimate = isNavigatingToHome || isNavigatingToIdle;
+    
+    // Handle premium transitions
+    if (shouldAnimate && !isNavigatingFromIdle) {
+      // Any Screen → Home/Idle transition
+      setExitingScreen(currentScreen);
+      setIsTransitioning(true);
+      setTransitionPhase('exiting');
+      
+      // Start exit animation (current screen fade out: 140-160ms)
+      // Then switch to target screen and start enter animation
+      // For Idle, use sequenced mode to prevent flash
+      const switchDelay = isNavigatingToIdle ? 140 : 100; // Longer delay for Idle to ensure complete exit
+      
+      setTimeout(() => {
+        setCurrentScreen(screen);
+        setTransitionPhase('entering');
+        
+        // Complete transition after enter animation (240ms for Home, 210ms for Idle)
+        const enterDuration = isNavigatingToIdle ? 210 : 240;
+        setTimeout(() => {
+          setIsTransitioning(false);
+          setTransitionPhase('idle');
+          setExitingScreen(null);
+        }, enterDuration);
+      }, switchDelay);
+    } else if (isNavigatingFromIdle && isNavigatingToHome) {
+      // Idle → Main Menu transition (original implementation)
+      setIsTransitioning(true);
+      setTransitionPhase('exiting');
+      
+      // Start exit animation (Idle fade out + blur: 160ms)
+      // Then switch to Main Menu and start enter animation
+      setTimeout(() => {
+        setCurrentScreen(screen);
+        setTransitionPhase('entering');
+        
+        // Complete transition after enter animation (240ms)
+        setTimeout(() => {
+          setIsTransitioning(false);
+          setTransitionPhase('idle');
+        }, 240);
+      }, 100); // Slight overlap: start Home ~100ms into Idle exit for smooth continuity
+    } else {
+      // All other screen changes: instant (no transition)
+      setCurrentScreen(screen);
+    }
   };
 
   const handleLanguageChange = (lang: Language) => {
@@ -155,13 +216,17 @@ function App() {
   const renderScreen = () => {
     switch (currentScreen) {
       case 'idle':
-        return <IdleScreen 
-          onTouch={() => handleScreenChange('main-menu')} 
-          onEnterSetup={() => handleScreenChange('enter-setup-mode')}
-          language={language}
-          communityName={communityName}
-          connectionStatus={connectionStatus}
-        />;
+        return (
+          <IdleScreen
+            onTouch={() => handleScreenChange('main-menu')}
+            onEnterSetup={() => handleScreenChange('enter-setup-mode')}
+            language={language}
+            communityName={communityName}
+            connectionStatus={connectionStatus}
+            isEntering={transitionPhase === 'entering' && currentScreen === 'idle'}
+            transitionStyle={transitionStyle}
+          />
+        );
       case 'main-menu':
         return (
           <MainMenu
@@ -172,6 +237,7 @@ function App() {
             onLanguageToggle={() => setShowLanguagePanel(true)}
             onBack={() => handleScreenChange('idle')}
             language={language}
+            transitionStyle={transitionStyle}
           />
         );
       case 'select-unit':
@@ -191,6 +257,7 @@ function App() {
             }}
             onBack={() => handleScreenChange('main-menu')}
             language={language}
+            isExiting={exitingScreen === 'select-unit'}
           />
         );
       case 'photo-capture':
@@ -215,6 +282,7 @@ function App() {
             unit={selectedUnit || ''}
             onComplete={() => handleScreenChange('no-response')}
             language={language}
+            isExiting={exitingScreen === 'delivery-waiting'}
           />
         );
       case 'intercom-warning':
@@ -224,6 +292,7 @@ function App() {
             onContinue={() => handleScreenChange('intercom-in-call')}
             onBack={() => handleScreenChange('select-unit')}
             language={language}
+            isExiting={exitingScreen === 'intercom-warning'}
           />
         );
       case 'voice-message-warning':
@@ -233,6 +302,7 @@ function App() {
             onContinue={() => handleScreenChange('voice-message-recording')}
             onBack={() => handleScreenChange('select-unit')}
             language={language}
+            isExiting={exitingScreen === 'voice-message-warning'}
           />
         );
       case 'intercom-in-call':
@@ -241,6 +311,7 @@ function App() {
             unit={selectedUnit || ''}
             onEnd={() => handleScreenChange('no-response')}
             language={language}
+            isExiting={exitingScreen === 'intercom-in-call'}
           />
         );
       case 'voice-message-recording':
@@ -254,6 +325,7 @@ function App() {
               handleScreenChange('idle');
             }}
             language={language}
+            isExiting={exitingScreen === 'voice-message-recording'}
           />
         );
       case 'no-response':
@@ -265,6 +337,7 @@ function App() {
               handleScreenChange('idle');
             }}
             language={language}
+            isExiting={exitingScreen === 'no-response'}
           />
         );
       case 'enter-setup-mode':
@@ -330,13 +403,17 @@ function App() {
           />
         );
       default:
-        return <IdleScreen 
-          onTouch={() => handleScreenChange('main-menu')} 
-          onEnterSetup={() => handleScreenChange('enter-setup-mode')}
-          language={language}
-          communityName={communityName}
-          connectionStatus={connectionStatus}
-        />;
+        return (
+          <IdleScreen
+            onTouch={() => handleScreenChange('main-menu')}
+            onEnterSetup={() => handleScreenChange('enter-setup-mode')}
+            language={language}
+            communityName={communityName}
+            connectionStatus={connectionStatus}
+            isEntering={transitionPhase === 'entering' && currentScreen === 'idle'}
+            transitionStyle={transitionStyle}
+          />
+        );
     }
   };
 

@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { Info } from 'lucide-react';
 import { Language } from '../App';
 import CenteredBottomActionBar from './CenteredBottomActionBar';
@@ -6,6 +6,7 @@ import CenteredBottomActionBar from './CenteredBottomActionBar';
 interface NoResponseScreenProps {
   onReturnToIdle: () => void;
   language: Language;
+  isExiting?: boolean;
 }
 
 const translations = {
@@ -32,20 +33,60 @@ const translations = {
   },
 };
 
-export default function NoResponseScreen({ onReturnToIdle, language }: NoResponseScreenProps) {
+export default function NoResponseScreen({ onReturnToIdle, language, isExiting }: NoResponseScreenProps) {
   const t = translations[language];
   const [countdown, setCountdown] = useState(10);
+  const [isAutoClosing, setIsAutoClosing] = useState(false);
+  
+  // Single-fire guard for auto-return
+  const isAutoReturningRef = useRef(false);
+  const countdownTimerRef = useRef<NodeJS.Timeout | null>(null);
+
+  // Unified return function used by BOTH manual and auto paths
+  const returnToIdle = (source: 'manual' | 'auto') => {
+    // Guard: prevent double-triggering
+    if (isAutoReturningRef.current) {
+      return;
+    }
+    
+    // Set guard flag
+    isAutoReturningRef.current = true;
+    
+    // Clear countdown timer immediately
+    if (countdownTimerRef.current) {
+      clearInterval(countdownTimerRef.current);
+      countdownTimerRef.current = null;
+    }
+    
+    if (source === 'auto') {
+      // Auto-return: apply subtle closing feel before navigation
+      setIsAutoClosing(true);
+      
+      // Wait for closing animation (120ms) before navigating
+      setTimeout(() => {
+        onReturnToIdle();
+      }, 120);
+    } else {
+      // Manual return: immediate navigation
+      onReturnToIdle();
+    }
+  };
 
   // Handle countdown reaching 0
   useEffect(() => {
-    if (countdown === 0) {
-      onReturnToIdle();
+    if (countdown === 0 && !isAutoReturningRef.current) {
+      returnToIdle('auto');
     }
-  }, [countdown, onReturnToIdle]);
+  }, [countdown]);
 
   useEffect(() => {
+    // Clear any existing timer before starting new one
+    if (countdownTimerRef.current) {
+      clearInterval(countdownTimerRef.current);
+    }
+    
     // Start countdown timer
-    const interval = setInterval(() => {
+    countdownTimerRef.current = setInterval(() => {
       setCountdown((prev) => {
         if (prev <= 1) {
           return 0;
@@ -54,17 +95,22 @@ export default function NoResponseScreen({ onReturnToIdle, language }: NoRespons
       });
     }, 1000);
 
-    // Cleanup on unmount
-    return () => clearInterval(interval);
+    // Cleanup on unmount - clear timer
+    return () => {
+      if (countdownTimerRef.current) {
+        clearInterval(countdownTimerRef.current);
+        countdownTimerRef.current = null;
+      }
+    };
   }, []);
 
   const handleReturnNow = () => {
-    // User requested immediate return
-    onReturnToIdle();
+    // User requested immediate return - use unified function
+    returnToIdle('manual');
   };
 
   return (
-    <div className="w-full h-full flex flex-col bg-white relative">
+    <div className={`w-full h-full flex flex-col bg-white relative ${isExiting ? 'screen-exit' : ''} ${isAutoClosing ? 'screen-auto-closing' : ''}`}>
       {/* Content - Centered */}
       <div className="flex-1 flex flex-col items-center justify-center px-16">
         <div className="flex flex-col items-center justify-center gap-8 max-w-4xl">
@@ -103,6 +149,29 @@ export default function NoResponseScreen({ onReturnToIdle, language }: NoRespons
           </button>
         }
       />
+
+      {/* Auto-closing animation style - embedded */}
+      <style>{`
+        .screen-auto-closing {
+          animation: auto-close-fade 120ms ease-in forwards;
+        }
+
+        @keyframes auto-close-fade {
+          0% {
+            opacity: 1.0;
+          }
+          100% {
+            opacity: 0.7;
+          }
+        }
+
+        /* Accessibility: Disable animation if user prefers reduced motion */
+        @media (prefers-reduced-motion: reduce) {
+          .screen-auto-closing {
+            animation: none !important;
+          }
+        }
+      `}</style>
     </div>
   );
 }

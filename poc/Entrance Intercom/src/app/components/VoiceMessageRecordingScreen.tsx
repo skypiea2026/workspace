@@ -10,6 +10,7 @@ interface VoiceMessageRecordingScreenProps {
   onComplete: () => void;
   onCancel?: () => void;
   language: Language;
+  isExiting?: boolean;
 }
 
 const MAX_DURATION_SEC = 30;
@@ -81,6 +82,7 @@ export default function VoiceMessageRecordingScreen({
   onComplete,
   onCancel,
   language,
+  isExiting,
 }: VoiceMessageRecordingScreenProps) {
   const t = safeT(language);
 
@@ -220,7 +222,7 @@ export default function VoiceMessageRecordingScreen({
   const isRecording = recordingState === 'recording';
 
   return (
-    <div className="w-full h-full flex flex-col bg-white">
+    <div className={`w-full h-full flex flex-col bg-white ${isExiting ? 'screen-exit' : ''}`}>
       {isSubmitting ? (
         // Submitting State - Full Screen Feedback
         <div className="flex-1 flex flex-col items-center justify-center">

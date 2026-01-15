@@ -8,6 +8,7 @@ interface IntercomInCallScreenProps {
   unit: string;
   onEnd: () => void;
   language: Language;
+  isExiting?: boolean;
 }
 
 const translations = {
@@ -46,7 +47,7 @@ const translations = {
  * Connected Call Limit: 90 seconds (while in-call)
  * All end scenarios navigate directly to Session Ended page.
  */
-export default function IntercomInCallScreen({ unit, onEnd, language }: IntercomInCallScreenProps) {
+export default function IntercomInCallScreen({ unit, onEnd, language, isExiting }: IntercomInCallScreenProps) {
   const t = translations[language];
   
   // Session state
@@ -143,7 +144,7 @@ export default function IntercomInCallScreen({ unit, onEnd, language }: Intercom
   };
 
   return (
-    <div className="w-full h-full flex flex-col bg-white relative">
+    <div className={`w-full h-full flex flex-col bg-white relative ${isExiting ? 'screen-exit' : ''}`}>
       {/* CONTENT AREA - Updates based on session state (clipped, cannot overlap control bar) */}
       <div className="flex-1 flex flex-col overflow-hidden">
         {/* Header - 3-column layout to prevent GlobalLogo overlap */}

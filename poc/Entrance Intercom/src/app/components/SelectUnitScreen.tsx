@@ -8,6 +8,7 @@ interface SelectUnitScreenProps {
   onConfirm: () => void;
   onBack: () => void;
   language: Language;
+  isExiting?: boolean;
 }
 
 const translations = {
@@ -48,11 +49,12 @@ export default function SelectUnitScreen({
   onConfirm,
   onBack,
   language,
+  isExiting,
 }: SelectUnitScreenProps) {
   const t = translations[language];
 
   return (
-    <div className="w-full h-full flex flex-col bg-white relative">
+    <div className={`w-full h-full flex flex-col bg-white relative ${isExiting ? 'screen-exit' : ''}`}>
       {/* Header - 3-column layout to prevent GlobalLogo overlap */}
       <div 
         className="flex items-center border-b border-gray-200 flex-shrink-0"

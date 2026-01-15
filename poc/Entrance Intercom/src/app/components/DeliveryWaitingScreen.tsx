@@ -7,6 +7,7 @@ interface DeliveryWaitingScreenProps {
   unit: string;
   onComplete: () => void;
   language: Language;
+  isExiting?: boolean;
 }
 
 const translations = {
@@ -33,7 +34,7 @@ const translations = {
   },
 };
 
-export default function DeliveryWaitingScreen({ unit, onComplete, language }: DeliveryWaitingScreenProps) {
+export default function DeliveryWaitingScreen({ unit, onComplete, language, isExiting }: DeliveryWaitingScreenProps) {
   const t = translations[language];
   const [doorUnlocked, setDoorUnlocked] = useState(false);
 
@@ -56,7 +57,7 @@ export default function DeliveryWaitingScreen({ unit, onComplete, language }: De
   }, []);
 
   return (
-    <div className="w-full h-full flex flex-col bg-white">
+    <div className={`w-full h-full flex flex-col bg-white ${isExiting ? 'screen-exit' : ''}`}>
       {/* Selected Unit Header */}
       <SelectedUnitHeader unit={unit} language={language} />
       

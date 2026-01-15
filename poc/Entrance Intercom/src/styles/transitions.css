@@ -1,0 +1,45 @@
+/**
+ * Global Navigation Transition Styles
+ * 
+ * Premium transition system for Entrance Intercom UI
+ * Supports three selectable styles (A, B, C) with consistent behavior
+ * across all languages and screens.
+ */
+
+/* ===================================================================
+   SHARED EXIT ANIMATION (Any Screen → Home/Idle)
+   =================================================================== */
+
+.screen-exit {
+  animation: screen-fade-blur-out 150ms ease-in forwards;
+}
+
+@keyframes screen-fade-blur-out {
+  0% {
+    opacity: 1.0;
+    filter: blur(0px);
+  }
+  100% {
+    opacity: 0.0;
+    filter: blur(4px);
+  }
+}
+
+/* ===================================================================
+   ACCESSIBILITY: Reduced Motion Support
+   =================================================================== */
+
+@media (prefers-reduced-motion: reduce) {
+  .screen-exit {
+    animation: screen-fade-out-reduced 120ms ease-in forwards !important;
+  }
+  
+  @keyframes screen-fade-out-reduced {
+    0% {
+      opacity: 1.0;
+    }
+    100% {
+      opacity: 0.0;
+    }
+  }
+}
